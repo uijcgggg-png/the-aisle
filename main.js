@@ -90,11 +90,11 @@ const canvas = document.getElementById('world');
 const isTouch = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
 if (isTouch) document.body.classList.add('touch');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-let pr = Math.min(devicePixelRatio || 1, 2);
+let pr = isTouch ? Math.min(devicePixelRatio || 1, 2) : Math.min(Math.max(devicePixelRatio || 1, 1.5), 2);
 const scene = new THREE.Scene(); const FOG = 0x040406;
 scene.background = new THREE.Color(FOG); scene.fog = new THREE.Fog(FOG, 4, 30);
 const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 60); camera.rotation.order = 'YXZ';
-const maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+const maxAniso = Math.min(16, renderer.capabilities.getMaxAnisotropy());
 
 const HALF = 1.1, DEPTH = 0.34, LEN = 20, CEIL = 3.4, BAND0 = 2.38, BAND1 = 3.2, NL = 5;
 const YB = (l) => 0.22 + l * 0.42;
@@ -163,8 +163,9 @@ function buildWorld() {
   for (const sx of [-1, 1]) {
     const xi = sx * HALF, xo = sx * (HALF + DEPTH), xa = Math.min(xi, xo), xb = Math.max(xi, xo);
     for (let l = 0; l < NL; l++) for (let z = -LEN; z < LEN; z += 1) {
-      b.box(xa, xb, YB(l) - 0.02, YB(l), z, z + 1, .2);
-      const rx0 = sx > 0 ? xi : xi - 0.008, rx1 = sx > 0 ? xi + 0.008 : xi; b.box(rx0, rx1, YB(l), YB(l) + 0.065, z, z + 1, 1.5);
+      b.box(xa, xb, YB(l) - 0.04, YB(l), z, z + 1, .1);
+      b.box(sx > 0 ? xi : xi - 0.012, sx > 0 ? xi + 0.012 : xi, YB(l) - 0.05, YB(l) - 0.005, z, z + 1, .035);
+      const rx0 = sx > 0 ? xi : xi - 0.008, rx1 = sx > 0 ? xi + 0.008 : xi; b.box(rx0, rx1, YB(l) + 0.05, YB(l) + 0.062, z, z + 1, 1.0);
     }
     for (let z = -LEN; z <= LEN; z += 1.2) b.box(sx > 0 ? xi : xi - 0.04, sx > 0 ? xi + 0.04 : xi, 0, BAND0, z - 0.02, z + 0.02, .06);
     for (let z = -LEN; z < LEN; z += 1) { b.box(xa, xb, 0, 0.19, z, z + 1, .12); b.box(xa, xb, BAND0 - 0.06, BAND0, z, z + 1, .1); }
@@ -191,7 +192,7 @@ function buildWorld() {
 const IMG = {}; let cover = null, spine = null;
 const arr = [[], []].map(() => Array.from({ length: NL }, () => []));
 function buildItems() {
-  const CC = 16, CR = 16, CWd = 112, CHt = 168, SC = 48, SR = 16, SW = 20, SH = 144;
+  const CC = 16, CR = 16, CWd = 128, CHt = 192, SC = 48, SR = 16, SW = 24, SH = 160;
   const ac = document.createElement('canvas'); ac.width = CC * CWd; ac.height = CR * CHt; const ax = ac.getContext('2d');
   const tmp = document.createElement('canvas'); tmp.width = CWd; tmp.height = CHt; const tx = tmp.getContext('2d');
   for (let c = 0; c < NCOVER; c++) { tx.clearRect(0, 0, CWd, CHt); drawCover(tx, CWd, CHt, c); ax.drawImage(tmp, (c % CC) * CWd, Math.floor(c / CC) * CHt); }
@@ -304,12 +305,13 @@ function openInspect(it) {
   if (imesh) { iscene.remove(imesh); imesh.geometry.dispose(); iMats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }
   const side = new THREE.MeshBasicMaterial({ color: 0xe6e6ec }); iMats = [side, side, side, side, new THREE.MeshBasicMaterial({ map: texFrom(drawCover, 640, 960, c) }), new THREE.MeshBasicMaterial({ map: texFrom(drawBack, 640, 960, c) })];
   imesh = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.34), iMats); iscene.add(imesh);
-  iState = { yaw: -2.6, ty: 0, pitch: 0, tp: 0, t0: performance.now(), drag: null, s: 1, px: 0, py: 0 }; layoutInspect();
+  iState = { yaw: -2.6, ty: 0, pitch: 0, tp: 0, t0: performance.now(), drag: null, s: 1, px: 0, py: 0, closing: 0 }; layoutInspect();
+  { camera.updateMatrixWorld(); const wp = new THREE.Vector3(it.x, it.y !== undefined ? it.y : YB(it.l) + it.h / 2, it.z), dist = Math.max(0.4, wp.distanceTo(camera.position)); const nd = wp.clone().project(camera); const vH = 2 * 7 * Math.tan(THREE.MathUtils.degToRad(16)), vW = vH * icam.aspect; iState.sx = THREE.MathUtils.clamp(nd.x, -1.2, 1.2) * vW / 2; iState.sy = THREE.MathUtils.clamp(nd.y, -1.2, 1.2) * vH / 2; iState.s0 = Math.max(0.05, (it.h / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)))) * vH / 3); iState.spin = -3.4 - Math.random() * 0.8; }
   tapeEl.querySelector('.code').textContent = `TAPE INFO · ${I.code}`; tapeEl.querySelector('h2').textContent = I.title; tapeEl.querySelector('.rent').textContent = `LAST RENTED ${I.rented}`;
   tapeEl.querySelector('dl').innerHTML = [['YEAR', `${I.year} · ${I.run}`], ['GENRE', I.genre.replace('NEW RELEASES', 'NEW').replace('STAFF FAVORITES', 'STAFF PICK')], ['DIR.', I.director.toUpperCase()], ['CAST', I.cast.join(', ').toUpperCase()]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
   tapeEl.classList.add('on'); icv.classList.add('on'); canvas.classList.add('dim'); document.getElementById('hint').style.opacity = 0; requestAnimationFrame(iLoop);
 }
-function closeInspect() { if (!inspecting) return; inspecting = false; tapeEl.classList.remove('on'); icv.classList.remove('on'); canvas.classList.remove('dim'); }
+function closeInspect() { if (!inspecting || iState.closing) return; iState.closing = performance.now(); tapeEl.classList.remove('on'); canvas.classList.remove('dim'); setTimeout(() => { inspecting = false; icv.classList.remove('on'); }, 520); }
 function flip() { if (iState) iState.ty += Math.PI; }
 document.getElementById('b-close').addEventListener('click', closeInspect); document.getElementById('b-flip').addEventListener('click', flip);
 icv.addEventListener('pointerdown', (e) => { if (!iState) return; iState.drag = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: 0 }; icv.setPointerCapture(e.pointerId); icv.style.cursor = 'grabbing'; });
@@ -319,13 +321,13 @@ icv.addEventListener('pointerup', iUp); icv.addEventListener('pointercancel', iU
 const LDIR = new THREE.Vector3(-0.35, 0.45, 0.82).normalize(), _n = new THREE.Vector3();
 function iLoop(now) {
   if (!inspecting) { ir.clear(); return; }
-  const k = Math.min(1, (now - iState.t0) / 650), e = 1 - Math.pow(1 - k, 3), s = iState.s * (0.35 + 0.65 * e);
+  const cl = iState.closing, k = cl ? 1 - Math.min(1, (now - cl) / 500) : Math.min(1, (now - iState.t0) / 950), e = 1 - Math.pow(1 - k, 3), lift = Math.sin(Math.min(1, k) * Math.PI);
   iState.yaw += (iState.ty - iState.yaw) * 0.12; iState.pitch += (iState.tp - iState.pitch) * 0.12;
-  imesh.rotation.set(iState.pitch + Math.sin(now / 1200) * 0.02, iState.yaw, Math.sin(now / 1700) * 0.015); imesh.scale.setScalar(s);
-  imesh.position.set(iState.px * e, iState.py * e - (1 - e) * 0.8, (1 - e) * 1.8);
-  // glare: specular flare when a face turns toward the light, strongest mid-turn
+  const spinOff = (1 - e) * iState.spin;
+  imesh.rotation.set(iState.pitch + Math.sin(now / 1200) * 0.02 + (1 - e) * 0.5, iState.yaw + spinOff, Math.sin(now / 1700) * 0.015 + (1 - e) * 0.35); const s = iState.s0 + (iState.s - iState.s0) * e + lift * iState.s * 0.12; imesh.scale.setScalar(s);
+  imesh.position.set(iState.sx + (iState.px - iState.sx) * e, iState.sy + (iState.py - iState.sy) * e, lift * 1.6);
   imesh.updateMatrixWorld(); _n.set(0, 0, 1).applyQuaternion(imesh.quaternion); const dF = Math.abs(_n.dot(LDIR)); const g = Math.max(0, 1 - Math.abs(dF - 0.55) * 2.6);
-  glare.material.opacity = Math.min(1, g * 1.05) * (0.35 + 0.65 * Math.abs(Math.sin(iState.yaw - iState.ty + 0.8))) ; glare.material.opacity = Math.min(1, g * 0.95);
+  glare.material.opacity = Math.min(1, g * 0.95 + lift * 0.45);
   glare.position.set(imesh.position.x - 0.5 * s * _n.x * 1.2 - 0.25 * s, imesh.position.y + 0.55 * s + 0.4 * s * _n.y, 0.7); glare.scale.setScalar(s * (2.2 + 1.8 * g));
   ir.render(iscene, icam); requestAnimationFrame(iLoop);
 }
@@ -338,9 +340,9 @@ let last = performance.now(), acc = 0, nfr = 0, hoverT = 0, lastZone = '', t0 = 
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; acc += dt; nfr++;
-  if (nfr === 90) { const avg = acc / nfr; if (avg > 0.026 && pr > 0.9) { pr = Math.max(0.85, pr - 0.3); resize(); } acc = 0; nfr = 0; }
+  if (nfr === 90) { const avg = acc / nfr; if (avg > 0.028 && pr > 1.05) { pr = Math.max(1, pr - 0.25); resize(); } acc = 0; nfr = 0; }
   const sec = Math.floor((now - t0) / 1000), sp = `SP ${Math.floor(sec / 3600)}:${String(Math.floor(sec / 60) % 60).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; if (sp !== lastSp) { spEl.textContent = sp; lastSp = sp; }
-  if (inspecting) return;
+  if (inspecting) { if (!iState || !iState.fl) { camera.position.set(pos.x, pos.y, pos.z); camera.rotation.set(pitch, yaw, 0); renderer.render(scene, camera); } return; }
   let fx = 0, fz = 0; if (keys.KeyW || keys.ArrowUp) fz += 1; if (keys.KeyS || keys.ArrowDown) fz -= 1; if (keys.KeyD) fx += 1; if (keys.KeyA) fx -= 1; if (keys.ArrowLeft) yaw += 1.8 * dt; if (keys.ArrowRight) yaw -= 1.8 * dt;
   fx += joy.x; fz -= joy.y; const mag = Math.hypot(fx, fz); if (mag > 1) { fx /= mag; fz /= mag; }
   const sp2 = 1.9 * (keys.ShiftLeft || keys.ShiftRight ? 1.9 : 1), tx = (Math.cos(yaw) * fx - Math.sin(yaw) * fz) * sp2, tz = (-Math.sin(yaw) * fx - Math.cos(yaw) * fz) * sp2;
