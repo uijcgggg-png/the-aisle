@@ -38,8 +38,14 @@ body.touch #joy{display:block}
 #btns button:active{background:rgba(255,255,255,.3)}
 @media (orientation:landscape){#tape{right:6vw;top:50%;transform:translateY(-50%);width:min(380px,40vw)}#tape.on{animation:fil .6s .25s both}@keyframes fil{from{opacity:0}to{opacity:1}}}
 @media (orientation:portrait){#tape{left:18px;right:18px;bottom:max(18px,env(safe-area-inset-bottom))}#tape h2{font-size:17px}}
+#intro{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:15;transition:opacity .8s ease,transform .8s ease}
+#intro.out{opacity:0;transform:scale(1.06);pointer-events:none}
+#skip{position:fixed;z-index:16;right:16px;bottom:max(16px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.2em;opacity:.7;text-shadow:0 1px 4px #000;cursor:pointer;padding:8px}
+body:not(.intro) #skip{display:none}
+body.intro .hud,body.intro #joy,body.intro #hint,body.intro #fx{display:none!important}
 </style></head><body>
 <canvas id="world"></canvas>
+<video id="intro" muted playsinline preload="auto" src="./2-intro.mp4"></video><div id="skip">TAP TO SKIP ▸</div>
 <canvas id="inspect"></canvas>
 <div id="fx"></div>
 <div class="hud" id="play">PLAY ▶<span id="nav"></span></div>

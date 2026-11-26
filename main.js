@@ -267,6 +267,7 @@ let yaw = 0, pitch = 0; const pos = new THREE.Vector3(0, 1.55, LEN - 1.6);
 const keys = {}, joy = { x: 0, y: 0 }; const vel = new THREE.Vector3(); let inspecting = false, bobT = 0;
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape' && inspecting) { closeInspect(); return; }
+  if (introActive) return;
   if (inspecting) { if (e.code === 'Space' || e.code === 'KeyF') { flip(); e.preventDefault(); } return; }
   keys[e.code] = true; if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
 });
@@ -337,11 +338,13 @@ const zoneEl = document.getElementById('nav'), spEl = document.getElementById('s
 function resize() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(pr); renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w / h < 1 ? 90 : 75; camera.updateProjectionMatrix(); layoutInspect(); }
 addEventListener('resize', resize);
 let last = performance.now(), acc = 0, nfr = 0, hoverT = 0, lastZone = '', t0 = performance.now(), lastSp = '';
+let introActive = false;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; acc += dt; nfr++;
   if (nfr === 90) { const avg = acc / nfr; if (avg > 0.028 && pr > 1.05) { pr = Math.max(1, pr - 0.25); resize(); } acc = 0; nfr = 0; }
   const sec = Math.floor((now - t0) / 1000), sp = `SP ${Math.floor(sec / 3600)}:${String(Math.floor(sec / 60) % 60).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; if (sp !== lastSp) { spEl.textContent = sp; lastSp = sp; }
+  if (introActive) { camera.position.set(pos.x, pos.y, pos.z); camera.rotation.set(pitch, yaw, 0); renderer.render(scene, camera); return; }
   if (inspecting) { if (!iState || !iState.fl) { camera.position.set(pos.x, pos.y, pos.z); camera.rotation.set(pitch, yaw, 0); renderer.render(scene, camera); } return; }
   let fx = 0, fz = 0; if (keys.KeyW || keys.ArrowUp) fz += 1; if (keys.KeyS || keys.ArrowDown) fz -= 1; if (keys.KeyD) fx += 1; if (keys.KeyA) fx -= 1; if (keys.ArrowLeft) yaw += 1.8 * dt; if (keys.ArrowRight) yaw -= 1.8 * dt;
   fx += joy.x; fz -= joy.y; const mag = Math.hypot(fx, fz); if (mag > 1) { fx /= mag; fz /= mag; }
@@ -364,7 +367,30 @@ async function start() {
   await loadArt(); await new Promise(r => setTimeout(r, 20));
   buildWorld(); buildItems();
   if (params.has('x')) pos.x = +params.get('x'); if (params.has('z')) pos.z = +params.get('z'); if (params.has('yaw')) yaw = +params.get('yaw'); if (params.has('pitch')) pitch = +params.get('pitch');
-  renderer.compile(scene, camera); document.getElementById('load').classList.add('off'); t0 = performance.now(); requestAnimationFrame(frame);
+  renderer.compile(scene, camera); t0 = performance.now(); requestAnimationFrame(frame);
+  await runIntro();
+  document.getElementById('load').classList.add('off');
   if (params.has('open')) setTimeout(() => { const [s, l, z] = params.get('open').split(',').map(Number); const a = arr[s][l]; const it = a[Math.min(a.length - 1, z)]; it.side = s; it.l = l; it.y = YB(l) + it.h / 2; openInspect(it); if (params.has('flip')) iState.ty = iState.yaw = Math.PI; if (params.has('tilt')) { iState.yaw = +params.get('tilt'); iState.ty = iState.yaw; iState.t0 = -1e9; } }, 1500);
+}
+// ================= intro: real footage, then hand off to the live aisle =================
+function runIntro() {
+  return new Promise((resolve) => {
+    const v = document.getElementById('intro'), body = document.body;
+    if (params.has('skip') || params.has('open') || !v) { if (v) v.remove(); resolve(); return; }
+    introActive = true; body.classList.add('intro');
+    let done = false;
+    const finish = () => {
+      if (done) return; done = true; introActive = false;
+      t0 = performance.now() - 17000; // the footage ends around SP 0:00:17, the live counter continues from there
+      body.classList.remove('intro'); v.classList.add('out');
+      setTimeout(() => v.remove(), 900); resolve();
+    };
+    v.addEventListener('ended', finish); v.addEventListener('error', finish);
+    v.addEventListener('timeupdate', () => { if (v.duration && v.currentTime > v.duration - 0.05) finish(); });
+    document.getElementById('load').classList.add('off');
+    const go = () => { const p = v.play(); if (p && p.catch) p.catch(() => { finish(); }); };
+    if (v.readyState >= 3) go(); else { v.addEventListener('canplay', go, { once: true }); v.load(); setTimeout(() => { if (v.readyState < 2) finish(); }, 12000); }
+    v.addEventListener('click', finish); document.getElementById('skip').addEventListener('click', finish);
+  });
 }
 start();
