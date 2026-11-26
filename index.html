@@ -2,42 +2,54 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#08070c">
+<meta name="theme-color" content="#050507">
 <title>The Aisle</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:#08070c;overflow:hidden;font-family:ui-monospace,Menlo,Consolas,monospace;color:#eaf2ff;touch-action:none;user-select:none;-webkit-user-select:none}
-#world{position:fixed;inset:0;width:100%;height:100%;display:block;transition:filter .35s}
-#world.dim{filter:blur(9px) brightness(.42)}
+html,body{margin:0;height:100%;background:#050507;overflow:hidden;font-family:"Courier New",ui-monospace,Menlo,Consolas,monospace;color:#f2f6ff;touch-action:none;user-select:none;-webkit-user-select:none}
+#world{position:fixed;inset:0;width:100%;height:100%;display:block;transition:filter .45s}
+#world.dim{filter:blur(15px) brightness(.62) saturate(1.15)}
 #inspect{position:fixed;inset:0;width:100%;height:100%;display:none;touch-action:none;cursor:grab}
 #inspect.on{display:block}
-#load{position:fixed;inset:0;background:#08070c;display:flex;align-items:center;justify-content:center;letter-spacing:.3em;font-size:13px;z-index:20;transition:opacity .5s}
+#fx{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 52%,rgba(0,0,0,.5) 100%),repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0 1px,rgba(0,0,0,0) 1px 3px);z-index:3}
+#load{position:fixed;inset:0;background:#050507;display:flex;align-items:center;justify-content:center;letter-spacing:.35em;font-size:13px;z-index:20;transition:opacity .6s}
 #load.off{opacity:0;pointer-events:none}
-#zone{position:fixed;top:max(14px,env(safe-area-inset-top));left:16px;font-size:12px;letter-spacing:.22em;opacity:.8;text-shadow:0 1px 6px #000;pointer-events:none}
-#hint{position:fixed;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));text-align:center;font-size:12px;letter-spacing:.12em;opacity:.85;pointer-events:none;transition:opacity 1s;text-shadow:0 1px 6px #000;padding:0 80px}
-#cross{position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:rgba(255,255,255,.55);pointer-events:none;display:none}
-#joy{position:fixed;left:max(22px,env(safe-area-inset-left));bottom:max(34px,env(safe-area-inset-bottom));width:124px;height:124px;border-radius:50%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.28);display:none;touch-action:none;backdrop-filter:blur(4px)}
-#knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;background:rgba(255,255,255,.32);border:1.5px solid rgba(255,255,255,.6)}
+.hud{position:fixed;z-index:6;pointer-events:none;text-shadow:0 0 6px rgba(160,200,255,.55),0 1px 3px #000;font-weight:bold}
+#play{top:max(16px,env(safe-area-inset-top));left:18px;font-size:13px;letter-spacing:.14em}
+#nav{display:block;margin-top:5px;font-size:8.5px;letter-spacing:.1em;opacity:.8;font-weight:normal}
+#sp{top:max(16px,env(safe-area-inset-top));right:18px;font-size:13px;letter-spacing:.1em}
+#hint{position:fixed;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom));text-align:center;font-size:11px;letter-spacing:.14em;opacity:.85;pointer-events:none;transition:opacity 1s;text-shadow:0 1px 6px #000;padding:0 100px;z-index:6}
+#tag{position:fixed;display:none;z-index:6;pointer-events:none;transform:translate(14px,-50%);font-size:11px;letter-spacing:.06em;text-shadow:0 1px 4px #000;white-space:nowrap}
+#tag b{display:block;font-size:12px;color:#fff;border-bottom:1px solid rgba(255,255,255,.6);padding-bottom:2px;margin-bottom:2px}
+#tag span{font-size:9px;opacity:.7}
+#joy{position:fixed;left:max(22px,env(safe-area-inset-left));bottom:max(34px,env(safe-area-inset-bottom));width:124px;height:124px;border-radius:50%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.26);display:none;touch-action:none;z-index:7}
+#knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;background:rgba(255,255,255,.3);border:1.5px solid rgba(255,255,255,.6)}
 body.touch #joy{display:block}
-#info{position:fixed;display:none;z-index:5;background:rgba(6,8,14,.72);border:1px solid rgba(160,200,255,.28);padding:16px 18px;font-size:12.5px;line-height:1.7;letter-spacing:.06em;backdrop-filter:blur(8px);border-radius:6px;overflow:auto}
-#info.on{display:block}
-#info h2{margin:0 0 8px;font-size:17px;letter-spacing:.08em;line-height:1.25;color:#fff}
-#info .k{color:#8fb4ff}
-#info p{margin:.7em 0 0;color:#cfd8e8;letter-spacing:.03em}
-#btns{display:flex;gap:10px;margin-top:14px}
-#btns button{flex:1;font:inherit;letter-spacing:.14em;font-size:12px;padding:11px 8px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;cursor:pointer}
-#btns button:active{background:rgba(255,255,255,.28)}
-@media (orientation:landscape){#info{right:4vw;top:50%;transform:translateY(-50%);width:min(360px,38vw);max-height:86vh}}
-@media (orientation:portrait){#info{font-size:11.5px;line-height:1.5;padding:12px 14px;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));max-height:40vh}}
+#tape{position:fixed;display:none;z-index:6;text-shadow:0 0 8px rgba(0,0,0,.8)}
+#tape.on{display:block;animation:fi .6s .25s both}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#tape .code{font-size:9px;letter-spacing:.14em;opacity:.8}
+#tape h2{margin:8px 0 6px;font-size:21px;letter-spacing:.04em;line-height:1.2;color:#fff;font-weight:bold}
+#tape .rent{font-size:9px;letter-spacing:.14em;opacity:.8;padding-bottom:7px;border-bottom:1px dashed rgba(255,255,255,.55);margin-bottom:10px}
+#tape dl{display:grid;grid-template-columns:58px 1fr;gap:7px 10px;margin:0;font-size:10px;letter-spacing:.07em}
+#tape dt{opacity:.62}#tape dd{margin:0}
+#btns{display:flex;gap:10px;margin-top:18px;pointer-events:auto}
+#btns button{font:inherit;letter-spacing:.16em;font-size:10px;padding:10px 14px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:3px;cursor:pointer}
+#btns button:active{background:rgba(255,255,255,.3)}
+@media (orientation:landscape){#tape{right:6vw;top:50%;transform:translateY(-50%);width:min(380px,40vw)}#tape.on{animation:fil .6s .25s both}@keyframes fil{from{opacity:0}to{opacity:1}}}
+@media (orientation:portrait){#tape{left:18px;right:18px;bottom:max(18px,env(safe-area-inset-bottom))}#tape h2{font-size:17px}}
 </style></head><body>
 <canvas id="world"></canvas>
 <canvas id="inspect"></canvas>
-<div id="zone"></div><div id="cross"></div>
+<div id="fx"></div>
+<div class="hud" id="play">PLAY ▶<span id="nav"></span></div>
+<div class="hud" id="sp">SP 0:00:00</div>
+<div id="tag"><b></b><span></span></div>
 <div id="hint"></div>
 <div id="joy"><div id="knob"></div></div>
-<div id="info"><h2 id="i-title"></h2><div id="i-meta"></div><p id="i-syn"></p>
+<div id="tape"><div class="code"></div><h2></h2><div class="rent"></div><dl></dl>
 <div id="btns"><button id="b-flip">FLIP</button><button id="b-close">BACK TO AISLE</button></div></div>
-<div id="load">LOADING</div>
+<div id="load">LOADING TAPE</div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js"}}</script>
 <script type="module" src="./main.js"></script>
 </body></html>
